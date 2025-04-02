@@ -1,0 +1,5 @@
+.vscode/
+build/
+CMakeFiles
+misc/
+src/BuildPrime.c
