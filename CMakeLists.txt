@@ -113,16 +113,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "GENPROFILE")
     endif()
 endif()
 
-# Copies the dll for pthreads to the executable for msvc
-if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
-    target_include_directories(Prime PRIVATE "pthread/include")
-    target_link_libraries(Prime PRIVATE "${BASE}/pthread/lib/x64/pthreadVC2")
-    add_custom_command(
-        TARGET Prime POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${BASE}/pthread/dll/x64/pthreadVC2.dll $<TARGET_FILE_DIR:Prime>
-    )
-endif ()
-
 # Profiles the executable with a build target for gcc and msvc
 if (CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     add_custom_command(

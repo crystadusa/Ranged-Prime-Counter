@@ -9,7 +9,7 @@ int main(int argCount, char* argArray []) {
     // Evaluates sieve options from command line arguments
     u64 searchStart = 0;
     u64 searchEnd = 0;
-    u32 maxThreadCount = 8;
+    u32 maxThreadCount = 1;
     u32 numbersEntered = 0;
 
     for (u32 i = 1; i < (u32) argCount; i++) {
@@ -72,22 +72,20 @@ int main(int argCount, char* argArray []) {
         primeCount = sievePrimes(&args);
     } else {
         // Evenly distributes search range between threads
-        pthread_t sieveThreads [8];
-        primeSieveArgs args [8];
+        thread sieveThreads [MAX_THREAD_COUNT];
+        primeSieveArgs args [MAX_THREAD_COUNT];
         for (u32 i = 0; i < threadCount; i++) {
             u64 threadStart = searchStart + threadSize * i;
             u64 threadEnd = threadStart + threadSize - 1;
             if (threadEnd > searchEnd) threadEnd = searchEnd;
 
             args[i] = (primeSieveArgs) {threadStart, threadEnd, l1CacheSize};
-            pthread_create(&sieveThreads[i], 0, (void*(*)(void*)) sievePrimes, &args[i]);
+			threadCreate(&sieveThreads[i], (void*(*)(void*)) sievePrimes, &args[i]);
         }
 
         // Adds together the prime counts from all threads
         for (u32 i = 0; i < threadCount; i++) {
-            u64 threadPrimeCount;
-            pthread_join(sieveThreads[i], (void**) &threadPrimeCount);
-            primeCount += threadPrimeCount;
+			primeCount += (u64) threadJoin(&sieveThreads[i]);
         }
     }
 
@@ -172,7 +170,7 @@ static u64 sievePrimes(primeSieveArgs* args) {
     p(x) = the number of primes up to x
     l(x) = x / (ln(x) - 1.1)
 
-    Remark 6.5 proves l(x) >= p(x) for x >= 60184
+    Remark 6.6 proves l(x) >= p(x) for x >= 60184
     I have tested that l(x) + 2 >= p(x) - 3 for x >= 4
 
     Table 6.8 shows smaller constants work as narrower bounds for larger x values
@@ -220,7 +218,7 @@ static u64 sievePrimes(primeSieveArgs* args) {
     u64 foundPrimeCount = 0;
 
     // Initialises sorted prime arrays for medium primes
-    u32 sortedPrimeSize = primeFactorAprx / 32; // TODO (formal proof this memory reduction is allowed)
+    u32 sortedPrimeSize = primeFactorAprx / 8; // TODO (formal proof this memory reduction is allowed)
     prime* sortedPrimesSrc = calloc(sortedPrimeSize * 64, sizeof(prime));
     prime* sortedPrimesDest = calloc(sortedPrimeSize * 64, sizeof(prime));
 
@@ -367,7 +365,7 @@ static void sieveSmallPrimes(prime* primes, u32 smallFactorCap, u8* isFoundPrime
                 sieveSmallPrimeFactor(23)
                 sieveSmallPrimeFactor(29)
                 sieveSmallPrimeFactor(1)
-                default: UNREACHABLE
+                default: UNREACHABLE;
             }
 
             nextSmallPrimeFactor:
@@ -396,7 +394,7 @@ static void sieveMediumPrimes(prime* sortedPrimesSrc, u32* sortedPrimeCountsSrc,
                 sieveMediumPrimeFactor(23)
                 sieveMediumPrimeFactor(29)
                 sieveMediumPrimeFactor(1)
-                default: UNREACHABLE
+                default: UNREACHABLE;
             }
 
             nextLargePrimeFactor:
