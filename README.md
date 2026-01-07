@@ -10,21 +10,21 @@ Options:
 * -t\<Threads\>
 
 ### Configuration
-I recommend tweaking some defines in Prime.h before compilation.
+I recommend tweaking some defines in Config.h before compilation.
 1. set MAX_THREAD_COUNT to your cpu's thread count
 2. set SMALL_SECTION_SIZE to a few KBs less than your CPU's L1 data cache
 3. The rest can be tweaked for per processor performance.
 
 ### Build
 This project has shell scripts for gcc, clang, and msvc in addition to the cmake build system.
+The shell scripts should be run from the top directory.
 
 To build this project with unix makefiles enter the following commands in a new build directory.
-1. cmake -S.. -B. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=[RELEASE, DEBUG]
+1. cmake --fresh -S../.build -B. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=[RELEASE, DEBUG]
 2. cmake --build .
 
 To build this project on windows enter the following commands in the "x86_x64 Cross Tools Command Prompt for VS 2022" and a new build directory.
-1. cmake -S.. -B. -G"Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=[RELEASE, DEBUG]
+1. cmake --fresh -S../.build -B. -G"Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=[RELEASE, DEBUG]
 2. cmake --build . --config [Release, Debug]
 
 -DCMAKE_BUILD_TYPE=[GENPROFILE or USEPROFILE] are used to enable profile guided optimizations. Run with genprofile and then useprofile for supported compilers.
-"# Ranged-Prime-Counter" 

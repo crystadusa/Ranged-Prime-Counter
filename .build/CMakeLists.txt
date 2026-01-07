@@ -1,15 +1,16 @@
 cmake_minimum_required(VERSION 3.21)
 project("Ranged prime counter" LANGUAGES C)
 
+message("CMAKE_C_FLAGS_RELEASE is ${CMAKE_C_FLAGS_RELEASE}")
+message("CMAKE_C_FLAGS_DEBUG is ${CMAKE_C_FLAGS_DEBUG}")
+
 # Sets c compiler flags 
 if (CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID STREQUAL "Clang")
     # Sets c compiler flags for gcc
     if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
         set(WARN_FLAGS "-Wall -Wextra -pedantic -Wconversion -Wdouble-promotion -Wshadow -Wno-cast-function-type -Wno-sign-conversion -Wno-unused-variable")
         set(COMMON_FLAGS "${WARN_FLAGS} -fverbose-asm -masm=intel")
-        set(SMALL_OPTIMIZE_FLAGS "${COMMON_FLAGS} -Os -march=nehalem -mtune=native -fallow-store-data-races -fipa-pta -fira-hoist-pressure \
-            -flto -fmerge-all-constants -fmodulo-sched -fmodulo-sched-allow-regmoves -fomit-frame-pointer -ftree-vectorize -fvect-cost-model=dynamic \
-            -fno-ident -fno-math-errno -fno-trapping-math -fno-signed-zeros -fassociative-math -ffinite-math-only -Wl,--gc-sections")
+        set(SMALL_OPTIMIZE_FLAGS "${COMMON_FLAGS} -Os -march=nehalem -mtune=native -flto -fno-math-errno -fno-trapping-math -Wl,--gc-sections")
         set(OPTIMIZE_FLAGS "${SMALL_OPTIMIZE_FLAGS} -O2")
 
         set(PROFILE_FLAGS "-fno-align-functions -fno-align-loops -fno-align-jumps -fno-align-labels")
@@ -20,12 +21,19 @@ if (CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID STREQUAL "Clang")
     elseif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
         set(WARN_FLAGS "-Wall -Wextra -pedantic -Wconversion -Wdouble-promotion -Wshadow -Wno-cast-function-type -Wno-sign-conversion -Wno-unused-variable")
         set(COMMON_FLAGS "${WARN_FLAGS} -fuse-ld=lld -fverbose-asm -masm=intel")
-        set(SMALL_OPTIMIZE_FLAGS "${COMMON_FLAGS} -Os -march=nehalem -mtune=native -flto -fmerge-all-constants -fomit-frame-pointer -ftree-vectorize \
-            -fno-asynchronous-unwind-tables -fno-math-errno -fno-trapping-math -fno-signed-zeros -fassociative-math -ffinite-math-only")
+        set(SMALL_OPTIMIZE_FLAGS "${COMMON_FLAGS} -Os -march=nehalem -mtune=native -flto -fno-asynchronous-unwind-tables \
+            -fno-math-errno -fno-trapping-math")
         set(OPTIMIZE_FLAGS "${SMALL_OPTIMIZE_FLAGS} -O2")
 
         set(C_FLAGS_GENPROFILE "-fprofile-generate")
         set(C_FLAGS_USEPROFILE "-fprofile-use=Prime-BuildPrime.profdata")
+    endif()
+
+    # Sets output directory for release and debug builds
+    if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Debug)
+    else ()
+        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Release)
     endif()
 
     # Sets all build target c flags for the gcc and clang
@@ -41,7 +49,7 @@ endif ()
 
 # Sets c compiler flags for msvc
 if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
-    set(COMMON_FLAGS "/nologo /D_CRT_SECURE_NO_WARNINGS /W4 /wd4245 /permissive-")
+    set(COMMON_FLAGS "/MD /nologo /D_CRT_SECURE_NO_WARNINGS /W4 /wd4245 /permissive-")
     set(SMALL_OPTIMIZE_FLAGS "${COMMON_FLAGS} /O2 /Os")
     set(OPTIMIZE_FLAGS "${SMALL_OPTIMIZE_FLAGS} /Ot")
 
@@ -56,11 +64,13 @@ if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_C_FLAGS_RELEASE "${OPTIMIZE_FLAGS}")
     set(CMAKE_C_FLAGS_MINSIZEREL "${SMALL_OPTIMIZE_FLAGS}")
     set(CMAKE_C_FLAGS_RELWITHDEBINFO "${OPTIMIZE_FLAGS} /Zi")
+
+    add_link_options("/Manifest:No")
 endif()
 
 # Sets relative file paths from binary to source directory
-file(RELATIVE_PATH BASE ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR})
-file(RELATIVE_PATH SRC ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/src)
+file(RELATIVE_PATH BASE ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/..)
+file(RELATIVE_PATH SRC ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/../src)
 
 # Builds and runs MakePrime to build Prime
 add_executable(MakePrime ${SRC}/MakePrime.c)

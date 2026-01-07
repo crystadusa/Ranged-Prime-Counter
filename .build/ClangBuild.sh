@@ -1,16 +1,16 @@
 COMMON_FLAGS="-fuse-ld=lld -fverbose-asm -masm=intel -Wall -Wextra -pedantic -Wconversion -Wdouble-promotion -Wshadow \
     -Wno-cast-function-type -Wno-sign-conversion -Wno-unused-variable"
-OPTIMIZE_FLAGS="$COMMON_FLAGS -O2 -march=nehalem -mtune=native -flto -fmerge-all-constants -fomit-frame-pointer -ftree-vectorize \
-    -fno-asynchronous-unwind-tables -fno-math-errno -fno-trapping-math -fno-signed-zeros -fassociative-math -ffinite-math-only -s"
+OPTIMIZE_FLAGS="$COMMON_FLAGS -O2 -march=nehalem -mtune=native -flto -fno-asynchronous-unwind-tables \
+    -fno-math-errno -fno-trapping-math -s"
 
-clang src/MakePrime.c $OPTIMIZE_FLAGS -obuild/MakePrime.exe
-./build/makePrime src/Prime.c src/BuildPrime.c
+clang src/MakePrime.c $OPTIMIZE_FLAGS -obuild/Release/MakePrime.exe
+./build/Release/makePrime src/Prime.c src/BuildPrime.c
 
 if [ "$1" = "release" ]; then
-    clang src/BuildPrime.c $OPTIMIZE_FLAGS -obuild/Prime.exe
+    clang src/BuildPrime.c $OPTIMIZE_FLAGS -obuild/Release/Prime.exe
     exit $?
 elif [ "$1" = "profile" ]; then
-    clang src/BuildPrime.c -fprofile-generate $OPTIMIZE_FLAGS -obuild/Prime.exe
+    clang src/BuildPrime.c -fprofile-generate $OPTIMIZE_FLAGS -obuild/Release/Prime.exe
 
     PROF_PREFIX="build/Prime-BuildPrime"
     export LLVM_PROFILE_FILE=$PROF_PREFIX"0.profraw"
@@ -35,16 +35,16 @@ elif [ "$1" = "profile" ]; then
     ./build/prime 90000000000 100000000000
 
     llvm-profdata merge build/*.profraw -o=$PROF_PREFIX.profdata
-    clang src/BuildPrime.c -fprofile-use=$PROF_PREFIX.profdata $OPTIMIZE_FLAGS -obuild/Prime.exe
+    clang src/BuildPrime.c -fprofile-use=$PROF_PREFIX.profdata $OPTIMIZE_FLAGS -obuild/Release/Prime.exe
     
     rm build/*.profraw
     rm $PROF_PREFIX.profdata
     exit $?
 elif [ "$1" = "asm" ]; then
-    clang src/BuildPrime.c -S $OPTIMIZE_FLAGS -fno-lto -obuild/Prime.s
+    clang src/BuildPrime.c -S $OPTIMIZE_FLAGS -fno-lto -obuild/Release/Prime.s
     exit $?
 elif [ "$1" = "debug" ]; then
-    clang src/BuildPrime.c -g $COMMON_FLAGS -obuild/Prime.exe
+    clang src/BuildPrime.c -g $COMMON_FLAGS -obuild/Debug/Prime.exe
     exit $?
 else
     echo "Mode $1 is invalid [release, debug, asm, profile]"
