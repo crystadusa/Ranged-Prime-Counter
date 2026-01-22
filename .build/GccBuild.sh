@@ -12,19 +12,19 @@ if [ "$1" = "release" ]; then
 elif [ "$1" = "profile" ]; then
     gcc src/BuildPrime.c -fprofile-generate $PROFILE_FLAGS -obuild/Release/Prime.exe
 
-    ./build/prime 00000000000 10000000000
-    ./build/prime 10000000000 20000000000
-    ./build/prime 20000000000 30000000000
-    ./build/prime 30000000000 40000000000
-    ./build/prime 40000000000 50000000000
-    ./build/prime 50000000000 60000000000
-    ./build/prime 60000000000 70000000000
-    ./build/prime 70000000000 80000000000
-    ./build/prime 80000000000 90000000000
-    ./build/prime 90000000000 100000000000
+    build/Release/prime 10000000000000 10010000000000
+    build/Release/prime 10010000000000 10020000000000
+    build/Release/prime 10020000000000 10030000000000
+    build/Release/prime 10030000000000 10040000000000
+    build/Release/prime 10040000000000 10050000000000
+    build/Release/prime 10050000000000 10060000000000
+    build/Release/prime 10060000000000 10070000000000
+    build/Release/prime 10070000000000 10080000000000
+    build/Release/prime 10080000000000 10090000000000
+    build/Release/prime 10090000000000 10100000000000
 
     gcc src/BuildPrime.c -fprofile-use -fprofile-correction $PROFILE_FLAGS -obuild/Release/Prime.exe
-    rm build/Prime-BuildPrime.gcda
+    rm build/Release/Prime-BuildPrime.gcda
     exit $?
 elif [ "$1" = "asm" ]; then
     gcc src/BuildPrime.c -S $OPTIMIZE_FLAGS -fno-lto -obuild/Release/Prime.s

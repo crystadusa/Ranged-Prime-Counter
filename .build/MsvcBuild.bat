@@ -11,16 +11,16 @@ if "%1"=="release" (
 ) else if "%1"=="profile" (
     cl src/BuildPrime.c /GL /Fobuild/Release/Prime.o %OPTIMIZE_FLAGS% /Febuild/Release/Prime.exe /link /GENPROFILE /LTCG
 
-    "build/Release/prime" 00000000000 10000000000
-    "build/Release/prime" 10000000000 20000000000
-    "build/Release/prime" 20000000000 30000000000
-    "build/Release/prime" 30000000000 40000000000
-    "build/Release/prime" 40000000000 50000000000
-    "build/Release/prime" 50000000000 60000000000
-    "build/Release/prime" 60000000000 70000000000
-    "build/Release/prime" 70000000000 80000000000
-    "build/Release/prime" 80000000000 90000000000
-    "build/Release/prime" 90000000000 100000000000
+    "build/Release/prime" 10000000000000 10010000000000
+    "build/Release/prime" 10010000000000 10020000000000
+    "build/Release/prime" 10020000000000 10030000000000
+    "build/Release/prime" 10030000000000 10040000000000
+    "build/Release/prime" 10040000000000 10050000000000
+    "build/Release/prime" 10050000000000 10060000000000
+    "build/Release/prime" 10060000000000 10070000000000
+    "build/Release/prime" 10070000000000 10080000000000
+    "build/Release/prime" 10080000000000 10090000000000
+    "build/Release/prime" 10090000000000 10100000000000
 
     cl src/BuildPrime.c /GL /Fobuild/Release/Prime.o %OPTIMIZE_FLAGS% /Febuild/Release/Prime.exe /link /USEPROFILE /LTCG
     del build\Release\prime.pgd build\Release\*.pgc

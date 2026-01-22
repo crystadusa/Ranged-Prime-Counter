@@ -146,10 +146,9 @@ static u64 sievePrimes(primeSieveArgs* args) {
     // Corrects error of not counting 2, 3, and 5 as prime
     if (searchStart > searchEnd) return 0;
     if (searchEnd < 5) {
-        u64 foundPrimeCount = 2;
-        if (searchStart > 3 || searchEnd < 2) foundPrimeCount = 0;
-        else if (searchStart == 3 || searchEnd == 2) foundPrimeCount = 1;
-        return foundPrimeCount;
+        if (searchStart > 3 || searchEnd < 2) return 0;
+        else if (searchStart == 3 || searchEnd == 2) return 1;
+        return 2;
     }
 
     u64 byteEnd = searchEnd < 7 ? 7 : searchEnd;
@@ -195,20 +194,34 @@ static u64 sievePrimes(primeSieveArgs* args) {
             if (multiple % 2 == 0) multiple++;
             multiple += nextWheelMultiple[multiple % 30 / 2];
 
-            primes[primeFactorCount].factor = i / 15;
-            primes[primeFactorCount].multiple = (multiple * i - 2) / 30;
-            primes[primeFactorCount++].wheel = primeRemainderToBit[i % 30 / 2] * 8 + primeRemainderToBit[multiple % 30 / 2];
-
             if (i * MEDIUM_PRIME_FACTOR < l1CacheSize) smallFactorCount++;
-            // if (i * LARGE_PRIME_FACTOR < sectionSizeCap) 
-            mediumFactorCount++;
+            if (i * LARGE_PRIME_FACTOR < sectionSizeCap) {
+                mediumFactorCount++;
+                primes[primeFactorCount].factor = i / 15;
+                primes[primeFactorCount].wheel = primeRemainderToBit[i % 30 / 2] * 8 + primeRemainderToBit[multiple % 30 / 2];
+            } else {
+                while (multiple % 7 == 0) {
+                    multiple += 2;
+                    multiple += nextWheelMultiple[multiple % 30 / 2];
+                }
+                primes[primeFactorCount].factor = i / 30;
+                primes[primeFactorCount].wheel = primeRemainderToBit[i % 30 / 2] * 48 + primeRemainderToBit210[multiple % 210 / 2];
+            }
+
+            primes[primeFactorCount++].multiple = (multiple * i - 2) / 30;
         }
 
     // Clips the section size between l1 cache size and MAX_SECTION_SIZE
-    u32 maxSectionSize = sqrtSearchCap * SECTION_SIZE_FACTOR;
+    // Can be a multiple of the l1 cache size if there are no large primes
+    u32 maxSectionSize = sqrtSearchCap * MAX_SECTION_SIZE;
     if (mediumFactorCount && maxSectionSize < l1CacheSize * 2) maxSectionSize = l1CacheSize * 2;
-    if (maxSectionSize > sectionSizeCap) maxSectionSize = sectionSizeCap;
     maxSectionSize = ((maxSectionSize - 1) / l1CacheSize + 1) * l1CacheSize;
+
+    if (maxSectionSize > sectionSizeCap) {
+        maxSectionSize = sectionSizeCap;
+        if (primeFactorCount == mediumFactorCount) maxSectionSize = maxSectionSize / l1CacheSize * l1CacheSize;
+    }
+
     l1CacheSize /= 30;
     maxSectionSize /= 30;
 
@@ -231,11 +244,27 @@ static u64 sievePrimes(primeSieveArgs* args) {
     for (u32 i = 0; i < 64; i++)
         sortedPrimeCounts0_[i] = sortedPrimeSize * i;
 
+    // Initialises prime section array for large primes
+    u32 largeFactorCount = primeFactorCount - mediumFactorCount;
+    u64 maxMultipleDistance = 0;
+    if (largeFactorCount) maxMultipleDistance = primes[primeFactorCount - 1].factor * 10 + 10;
+    u64 maxSectionDistance = (maxSectionSize - 1 + maxMultipleDistance) / maxSectionSize + 1;
+
+    u64 sectionPrimeSize = maxSectionDistance * largeFactorCount;
+    largePrime** sectionPrimeEnds = calloc(maxSectionDistance, sizeof(largePrime*));
+    largePrime* sectionPrimes = calloc(sectionPrimeSize, sizeof(largePrime));
+
+    // Subdivides end pointers between sections
+    largePrime* sectionPrimeStart = sectionPrimes;
+    for (u32 i = 0; i < maxSectionDistance; i++)
+        sectionPrimeEnds[i] = sectionPrimes + largeFactorCount * i;
+
     u32 smallFactorCap = 0;
     u32 mediumFactorCap = smallFactorCount;
+	u32 largeFactorCap = mediumFactorCount;
 
     // Iterates primes in sections to lower memory usage
-    for (u64 i = byteStart; i <= byteEnd; i += maxSectionSize) {
+    if (searchEnd > 6) for (u64 i = byteStart; i <= byteEnd; i += maxSectionSize) {
         // Unmarks all numbers in the section
         memset(isFoundPrime, 0xFF, maxSectionSize);
 
@@ -252,7 +281,7 @@ static u64 sievePrimes(primeSieveArgs* args) {
 
         // Caps small prime loop if the next multiple of a prime exceeds the end of the section
         for (u32 j = smallFactorCap;; j++) {
-            // Exception is made if small prime distance exceeds small section size
+            // Exception is made if small prime distance exceeds section size
             if (primes[j].factor * 3 + 3 >= sectionSize || j >= smallFactorCount) {
                 smallFactorCap = smallFactorCount;
                 break;
@@ -300,24 +329,49 @@ static u64 sievePrimes(primeSieveArgs* args) {
         sortedPrimeCountsSrc = sortedPrimeCountsDest;
         sortedPrimeCountsDest = sortedSwap;
 
-        // Todo: optimize this for search ends >= 10^12
-        // Large prime factors use a branchless cache friendly bucket algorithm
-        /*
-        for (u32 j = mediumFactorCount; j < primeFactorCount; j++) {
-            u64 subPrimeFactor = primes[j].factor;
-            u64 subPrimeMultiple = primes[j].multiple - i;
-            u32 wheel = primes[j].wheel;
-            
-            while (subPrimeMultiple <= sectionSize) {
-                isFoundPrime[subPrimeMultiple] &= unprimeBit[wheel];
-                subPrimeMultiple += subPrimeFactor * multipleDist[wheel & 7] + multipleCorrection[wheel];
-                wheel = nextWheel[wheel];
+        // Caps large prime loop if the next multiple of a prime exceeds the prime section array
+        u32 logSectionSize = (u32) log2(MAX_SECTION_SIZE);
+        for (u32 j = largeFactorCap;; j++) {
+            u64 subMultiple = primes[j].multiple - i;
+            if (j == primeFactorCount || subMultiple > maxSectionSize * maxSectionDistance) {
+                largeFactorCap = j;
+                break;
             }
-
-            primes[j].multiple = subPrimeMultiple + i;
-            primes[j].wheel = wheel;
+            
+            u32 newSection = (u32) (subMultiple >> logSectionSize);
+            subMultiple &= (MAX_SECTION_SIZE - 1);
+            *sectionPrimeEnds[newSection]++ = (largePrime) {((u32) subMultiple << 9) | primes[j].wheel, primes[j].factor};
         }
-        */
+
+        // Large prime factors use a branchless cache friendly section algorithm
+        while (sectionPrimeEnds[0] != sectionPrimeStart) {
+            largePrime* sectionPrimeEnd = sectionPrimeEnds[0];
+            sectionPrimeEnds[0] = sectionPrimeStart;
+
+            largePrime* j = sectionPrimeStart;
+            for (j = sectionPrimeStart; j < sectionPrimeEnd; j++) {
+				u32 subPrimeFactor = j->factor;
+                u32 subPrimeMultiple = j->multipleWheel >> 9;
+                u32 wheel = j->multipleWheel & 0x1FF;
+
+                largeContext context = wheel210[wheel];
+                isFoundPrime[subPrimeMultiple] &= context.unprimeBit;
+                subPrimeMultiple += subPrimeFactor * context.multipleDist + context.multipleCorrection;
+                wheel = context.nextWheel;
+                
+                u32 newSection = subPrimeMultiple >> logSectionSize;
+                subPrimeMultiple &= (MAX_SECTION_SIZE - 1);
+                *sectionPrimeEnds[newSection]++ = (largePrime) {(subPrimeMultiple << 9) | wheel, (u32) subPrimeFactor};
+			}
+        }
+        
+        // Shifts the end pointers in the prime section array
+        for (u32 j = 0; j < maxSectionDistance - 1; j++)
+            sectionPrimeEnds[j] = sectionPrimeEnds[j + 1];
+        sectionPrimeEnds[maxSectionDistance - 1] = sectionPrimeStart;
+
+        sectionPrimeStart += largeFactorCount;
+        if (sectionPrimeStart >= sectionPrimes + sectionPrimeSize) sectionPrimeStart = sectionPrimes;
 
         // Adds unmarked numbers to the prime count
         for (u32 j = 0; (u64) j <= sectionSize / 8; j++)
@@ -341,6 +395,8 @@ static u64 sievePrimes(primeSieveArgs* args) {
 
     // Frees remaining memory allocations
     free(primes);
+    free(sectionPrimeEnds);
+    free(sectionPrimes);
     free(sortedPrimesSrc);
     free(sortedPrimesDest);
     free(isFoundPrime);

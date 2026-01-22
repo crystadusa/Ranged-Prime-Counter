@@ -1,10 +1,10 @@
 // Configuration defines
-#define SMALL_SECTION_SIZE (40 * 1024)
+#define SMALL_SECTION_SIZE (39 * 1024)
 #if SMALL_SECTION_SIZE && SMALL_SECTION_SIZE % 16
 #error SMALL_SECTION_SIZE must be a multiple of 16
 #endif
 
-#define MAX_SECTION_SIZE (240 * 1024)
+#define MAX_SECTION_SIZE (256 * 1024)
 #if MAX_SECTION_SIZE < 1
 #error MAX_SECTION_SIZE must be at least 1
 #endif
@@ -19,10 +19,10 @@
 #error MAX_THREAD_COUNT must be at least 1
 #endif
 
-// Medium primes are >= small section size / x
+// Medium primes are >= SMALL_SECTION_SIZE * 30 / x
 #define MEDIUM_PRIME_FACTOR 120
 // Large primes are >= MAX_SECTION_SIZE * 30 / x
-#define LARGE_PRIME_FACTOR 10
+#define LARGE_PRIME_FACTOR 30
 
 #if MEDIUM_PRIME_FACTOR < LARGE_PRIME_FACTOR
 #error MEDIUM_PRIME_FACTOR must be greater than LARGE_PRIME_FACTOR
